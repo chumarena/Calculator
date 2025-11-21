@@ -3,18 +3,14 @@
 #include <stdexcept>
 #include <cctype>
 #include <algorithm>
+#include <sstream>
 
 using namespace std;
 
 bool Parser::is_number(const string& token) {
-    try {
-        size_t pos;
-        stod(token, &pos);
-        return pos == token.length();
-    }
-    catch (...) {
-        return false;
-    }
+    stringstream ss(token);
+    double d;
+    return (ss >> d) && ss.eof() && !ss.fail();
 }
 
 Parser::Parser(const map<string, unique_ptr<IPlugin>>& availablePlugins)
@@ -27,11 +23,11 @@ bool Parser::is_function(const string& token) {
 }
 
 bool Parser::is_operator(const string& token) {
-    // 1. Стандартные бинарные операторы (+, -, *, /)
+    // 1. РЎС‚Р°РЅРґР°СЂС‚РЅС‹Рµ Р±РёРЅР°СЂРЅС‹Рµ РѕРїРµСЂР°С‚РѕСЂС‹ (+, -, *, /)
     if (token.length() == 1 && token.find_first_of("+-*/") != string::npos) {
         return true;
     }
-    // 2. Бинарные операторы из плагинов (e.g., ^)
+    // 2. Р‘РёРЅР°СЂРЅС‹Рµ РѕРїРµСЂР°С‚РѕСЂС‹ РёР· РїР»Р°РіРёРЅРѕРІ (e.g., ^)
     auto it = plugins.find(token);
     if (it != plugins.end() && it->second->getType() == OpType::BINARY) {
         return true;
@@ -45,7 +41,7 @@ int Parser::get_precedence(const string& op) {
 
     auto it = plugins.find(op);
     if (it != plugins.end() && it->second->getType() == OpType::BINARY) {
-        return 3; //Самый высокий приоритет для бинарных плагинов (как у ^)
+        return 3; //РЎР°РјС‹Р№ РІС‹СЃРѕРєРёР№ РїСЂРёРѕСЂРёС‚РµС‚ РґР»СЏ Р±РёРЅР°СЂРЅС‹С… РїР»Р°РіРёРЅРѕРІ (РєР°Рє Сѓ ^)
     }
     return 0;
 }
@@ -75,7 +71,7 @@ vector<string> Parser::tokenize(const string& expression) {
                 tokens.push_back(func);
             }
             else {
-                throw runtime_error("Неизвестная функция или идентификатор: " + func);
+                throw runtime_error("РќРµРёР·РІРµСЃС‚РЅР°СЏ С„СѓРЅРєС†РёСЏ РёР»Рё РёРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ: " + func);
             }
         }
         else {
@@ -87,7 +83,7 @@ vector<string> Parser::tokenize(const string& expression) {
                 tokens.push_back(token);
             }
             else {
-                throw runtime_error("Недопустимый символ в выражении: " + token);
+                throw runtime_error("РќРµРґРѕРїСѓСЃС‚РёРјС‹Р№ СЃРёРјРІРѕР» РІ РІС‹СЂР°Р¶РµРЅРёРё: " + token);
             }
         }
     }
@@ -140,7 +136,7 @@ vector<string> Parser::infix_to_rpn(const vector<string>& tokens) {
             while (!op_stack.empty()) {
                 const string& top = op_stack.top();
 
-                // Унарный минус имеет самый высокий приоритет (как функция)
+                // РЈРЅР°СЂРЅС‹Р№ РјРёРЅСѓСЃ РёРјРµРµС‚ СЃР°РјС‹Р№ РІС‹СЃРѕРєРёР№ РїСЂРёРѕСЂРёС‚РµС‚ (РєР°Рє С„СѓРЅРєС†РёСЏ)
                 int top_precedence = (top == UNARY_MINUS) ? 4 : get_precedence(top);
                 int token_precedence = get_precedence(token);
 
@@ -148,7 +144,7 @@ vector<string> Parser::infix_to_rpn(const vector<string>& tokens) {
                     (is_operator(top) &&
                         (top_precedence > token_precedence ||
                             (top_precedence == token_precedence &&
-                                token_precedence < 3)))) { //Левоассоциативность для +, -, *, /
+                                token_precedence < 3)))) { //Р›РµРІРѕР°СЃСЃРѕС†РёР°С‚РёРІРЅРѕСЃС‚СЊ РґР»СЏ +, -, *, /
 
                     rpn_output.push_back(top);
                     op_stack.pop();
@@ -167,7 +163,7 @@ vector<string> Parser::infix_to_rpn(const vector<string>& tokens) {
                 rpn_output.push_back(op_stack.top());
                 op_stack.pop();
             }
-            if (op_stack.empty()) throw runtime_error("Несогласованные скобки.");
+            if (op_stack.empty()) throw runtime_error("РќРµСЃРѕРіР»Р°СЃРѕРІР°РЅРЅС‹Рµ СЃРєРѕР±РєРё.");
             op_stack.pop();
 
             if (!op_stack.empty()) {
@@ -179,13 +175,13 @@ vector<string> Parser::infix_to_rpn(const vector<string>& tokens) {
             }
         }
         else {
-            throw runtime_error("Неизвестный токен: " + token);
+            throw runtime_error("РќРµРёР·РІРµСЃС‚РЅС‹Р№ С‚РѕРєРµРЅ: " + token);
         }
     }
 
     while (!op_stack.empty()) {
         if (op_stack.top() == "(" || op_stack.top() == ")") {
-            throw runtime_error("Несогласованные скобки.");
+            throw runtime_error("РќРµСЃРѕРіР»Р°СЃРѕРІР°РЅРЅС‹Рµ СЃРєРѕР±РєРё.");
         }
         rpn_output.push_back(op_stack.top());
         op_stack.pop();
