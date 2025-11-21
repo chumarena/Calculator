@@ -1,8 +1,9 @@
 #include "ExpressionTree.h"
-#include "BaseOperations.h" // <<< ЗАМЕНА
+#include "BaseOperations.h" 
 #include <stack>
 #include <stdexcept>
 #include <iostream>
+#include <sstream>
 
 using namespace std;
 
@@ -14,7 +15,7 @@ bool ExpressionTree::is_operator_or_function(const string& token) const {
     if (token.length() == 1 && token.find_first_of("+-*/") != string::npos) {
         return true;
     }
-    if (token == "~") { //Унарный минус
+    if (token == "~") { //РЈРЅР°СЂРЅС‹Р№ РјРёРЅСѓСЃ
         return true;
     }
     return plugins.count(token);
@@ -38,14 +39,14 @@ void ExpressionTree::build(const vector<string>& rpn_tokens) {
             }
 
             if (type == OpType::BINARY) {
-                if (node_stack.size() < 2) throw runtime_error("Ошибка: Недостаточно операндов для бинарного оператора " + token);
+                if (node_stack.size() < 2) throw runtime_error("РћС€РёР±РєР°: РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РѕРїРµСЂР°РЅРґРѕРІ РґР»СЏ Р±РёРЅР°СЂРЅРѕРіРѕ РѕРїРµСЂР°С‚РѕСЂР° " + token);
 
                 unique_ptr<Node> right = move(node_stack.top()); node_stack.pop();
                 unique_ptr<Node> left = move(node_stack.top()); node_stack.pop();
                 node_stack.push(make_unique<Node>(token, move(left), move(right)));
             }
-            else { // Унарная (OpType::UNARY или '~')
-                if (node_stack.empty()) throw runtime_error("Ошибка: Недостаточно операндов для унарной функции " + token);
+            else { // РЈРЅР°СЂРЅР°СЏ (OpType::UNARY РёР»Рё '~')
+                if (node_stack.empty()) throw runtime_error("РћС€РёР±РєР°: РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РѕРїРµСЂР°РЅРґРѕРІ РґР»СЏ СѓРЅР°СЂРЅРѕР№ С„СѓРЅРєС†РёРё " + token);
 
                 unique_ptr<Node> arg = move(node_stack.top()); node_stack.pop();
                 node_stack.push(make_unique<Node>(token, nullptr, move(arg)));
@@ -58,7 +59,7 @@ void ExpressionTree::build(const vector<string>& rpn_tokens) {
     }
 
     if (node_stack.size() != 1) {
-        throw runtime_error("Ошибка: Неверное количество токенов в выражении.");
+        throw runtime_error("РћС€РёР±РєР°: РќРµРІРµСЂРЅРѕРµ РєРѕР»РёС‡РµСЃС‚РІРѕ С‚РѕРєРµРЅРѕРІ РІ РІС‹СЂР°Р¶РµРЅРёРё.");
     }
     root = move(node_stack.top());
 }
@@ -69,19 +70,22 @@ double ExpressionTree::evaluate() const {
 }
 
 double ExpressionTree::evaluate_recursive(const Node* node) const {
-    if (!node) throw runtime_error("Внутренняя ошибка: Узел пуст.");
+    if (!node) throw runtime_error("Р’РЅСѓС‚СЂРµРЅРЅСЏСЏ РѕС€РёР±РєР°: РЈР·РµР» РїСѓСЃС‚.");
 
     
     if (!node->left && !node->right) {
-        try {
-            return stod(node->value);
+        double value;
+        std::stringstream ss(node->value);
+
+        if (ss >> value) {
+            return value;
         }
-        catch (...) {
-            throw runtime_error("Недопустимый операнд: " + node->value);
+        else {
+            throw runtime_error("РќРµРґРѕРїСѓСЃС‚РёРјС‹Р№ РѕРїРµСЂР°РЅРґ: " + node->value);
         }
     }
 
-	//Унарный минус
+	//РЈРЅР°СЂРЅС‹Р№ РјРёРЅСѓСЃ
     if (node->value == "~") {
         double arg = evaluate_recursive(node->right.get());
         return -arg;
@@ -121,5 +125,5 @@ double ExpressionTree::evaluate_recursive(const Node* node) const {
         }
     }
 
-    throw runtime_error("Неизвестный оператор или функция: " + node->value);
+    throw runtime_error("РќРµРёР·РІРµСЃС‚РЅС‹Р№ РѕРїРµСЂР°С‚РѕСЂ РёР»Рё С„СѓРЅРєС†РёСЏ: " + node->value);
 }
